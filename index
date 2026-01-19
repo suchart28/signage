@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Signage Display</title>
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Layout Container 1920x1080 Ratio Idea */
+        #display-container {
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* Main Content Area (Video/Web) */
+        #main-content {
+            flex-grow: 1; position: relative; background: #1a1a1a;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+
+        /* Marquee Section (Minimal & Colorful) */
+        #marquee-bar {
+            height: 80px;
+            background: linear-gradient(90deg, #FF0080, #7928CA, #FF0080); /* Colorful Gradient */
+            background-size: 200% 200%;
+            display: flex; align-items: center;
+            color: white; font-size: 40px; font-weight: bold;
+            white-space: nowrap; overflow: hidden;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            animation: gradientMove 5s ease infinite;
+        }
+
+        @keyframes gradientMove { 
+            0% {background-position: 0% 50%} 
+            50% {background-position: 100% 50%} 
+            100% {background-position: 0% 50%} 
+        }
+
+        .scrolling-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: scroll-left 20s linear infinite;
+        }
+
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="display-container">
+        <div id="main-content">
+            </div>
+        <div id="marquee-bar">
+            <div class="scrolling-text" id="marquee-text">กำลังรอข้อมูล...</div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // --- 1. ใส่ Config จาก Firebase ตรงนี้ ---
+       const firebaseConfig = {
+  apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+  authDomain: "suchartwork-1487382986748.firebaseapp.com",
+  databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+  projectId: "suchartwork-1487382986748",
+  storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+  messagingSenderId: "353884592527",
+  appId: "1:353884592527:web:c201a092042a005feb13fa"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // --- 2. Logic การเปลี่ยนหน้าจอ ---
+        const contentDiv = document.getElementById('main-content');
+        const marqueeText = document.getElementById('marquee-text');
+
+        db.ref('signage_data').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if(!data) return;
+
+            // Update Text
+            marqueeText.innerText = data.text || "";
+            // Reset Animation to make sure new text flows correctly
+            const el = marqueeText;
+            el.style.animation = 'none';
+            el.offsetHeight; /* trigger reflow */
+            el.style.animation = `scroll-left ${data.speed || 20}s linear infinite`;
+
+            // Update Content based on Type
+            contentDiv.innerHTML = ''; // Clear old content
+            
+            if (data.type === 'youtube') {
+                // YouTube Embed (Autoplay, Mute to bypass browser policy, Loop)
+                const videoId = data.url; 
+                contentDiv.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0" allow="autoplay; encrypted-media"></iframe>`;
+            } else if (data.type === 'web') {
+                contentDiv.innerHTML = `<iframe src="${data.url}"></iframe>`;
+            }
+        });
+    </script>
+</body>
+</html>
