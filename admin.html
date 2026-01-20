@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signage Admin (Chakra Petch)</title>
+    <title>Signage Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -28,6 +28,7 @@
                 <div class="mb-3">
                     <label class="form-label fw-bold">YouTube ID / Playlist ID</label>
                     <input type="text" class="form-control" id="inputYoutubeId" placeholder="ID คลิป หรือ Playlist">
+                    <div class="form-text">Header จะกว้างขึ้น เพื่อให้วิดีโอ 16:9 พอดีจอ</div>
                 </div>
             </div>
         </div>
@@ -48,14 +49,13 @@
             </div>
             <div class="card-body">
                 <label class="form-label fw-bold">ข้อความ</label>
-                <textarea class="form-control mb-3" id="inputText" rows="2" placeholder="พิมพ์ข้อความยาวๆ ได้เลย..."></textarea>
+                <textarea class="form-control mb-3" id="inputText" rows="4" placeholder="วางข้อความยาวๆ ได้เลย ระบบจะจัดเป็นบรรทัดเดียวให้เอง..."></textarea>
                 
-                <label class="form-label fw-bold">ความเร็วการวิ่ง (ยิ่งมาก ยิ่งช้า)</label>
+                <label class="form-label fw-bold">ความเร็วการวิ่ง</label>
                 <div class="d-flex align-items-center">
                     <input type="range" class="form-range flex-grow-1 me-3" id="inputSpeed" min="10" max="300" step="10" value="30" oninput="speedVal.innerText = this.value + ' วินาที'">
                     <span id="speedVal" class="badge bg-secondary" style="width: 80px;">30 วินาที</span>
                 </div>
-                <div class="form-text">แนะนำ: ข้อความสั้นใช้ 20-40, ข้อความยาวมากใช้ 100+</div>
             </div>
         </div>
 
@@ -79,7 +79,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Load existing data
         db.ref('signage_data').once('value', (snapshot) => {
             const data = snapshot.val();
             if(data) {
@@ -96,14 +95,19 @@
             const deptName = document.getElementById('inputDeptName').value;
             const webUrl = document.getElementById('inputWebUrl').value;
             const youtubeId = document.getElementById('inputYoutubeId').value;
-            const text = document.getElementById('inputText').value;
+            
+            // --- Logic ปรับแก้ข้อความ (สำคัญ) ---
+            let textRaw = document.getElementById('inputText').value;
+            // ใช้ Regex แทนที่ Enter (\n, \r) ทั้งหมดด้วยช่องว่าง
+            const textClean = textRaw.replace(/[\r\n]+/g, " ");
+
             const speed = document.getElementById('inputSpeed').value;
 
             db.ref('signage_data').set({
                 deptName: deptName,
                 webUrl: webUrl,
                 youtubeId: youtubeId,
-                text: text,
+                text: textClean, // ส่งค่าที่ลบ Enter ออกแล้ว
                 speed: speed,
                 timestamp: Date.now()
             }).then(() => {
