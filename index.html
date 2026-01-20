@@ -3,45 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Signage Display (3-Zone)</title>
+    <title>Digital Signage Display</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&display=swap" rel="stylesheet">
+
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%; 
+            overflow: hidden; 
+            background: #000; 
+            font-family: 'Chakra Petch', sans-serif; /* ใช้ฟอนต์ใหม่ */
+        }
         
-        /* Main Grid Container 1920x1080 */
+        /* Grid Layout 1920x1080 */
         #grid-container {
             display: grid;
-            width: 1920px;
-            height: 1080px;
-            /* Grid Template: 
-               Row 1: 960px
-               Row 2: 120px 
-               Col 1: 640px, Col 2: 1280px */
+            width: 1920px; height: 1080px;
             grid-template-rows: 960px 120px;
             grid-template-columns: 640px 1280px;
         }
 
-        /* Zone 1: Web (Top Left) */
+        /* Zone 1: Web (Left) */
         #zone-web {
             grid-row: 1; grid-column: 1;
             background: #fff;
-            border-right: 2px solid #333; /* Optional border */
+            border-right: 4px solid #001a4d;
         }
 
-        /* Zone 2: YouTube (Top Right) */
-        #zone-video {
+        /* Zone 2: Right Column Container (Header + Video) */
+        #right-column {
             grid-row: 1; grid-column: 2;
+            display: flex;
+            flex-direction: column;
             background: #000;
         }
 
-        /* Zone 3: Marquee (Bottom Full Width) */
+        /* ส่วนชื่อหน่วยงาน (Header) */
+        #dept-header {
+            height: 100px; /* ความสูงของแถบชื่อ */
+            background-color: #001a4d; /* สีน้ำเงินเข้ม */
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px; /* ตัวใหญ่สะใจ */
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+
+        /* ส่วนวิดีโอ (พื้นที่ที่เหลือ) */
+        #video-container {
+            flex-grow: 1; /* ขยายเต็มพื้นที่ที่เหลือ */
+            position: relative;
+            background: #000;
+        }
+
+        /* Zone 3: Marquee (Bottom) */
         #zone-marquee {
-            grid-row: 2; grid-column: 1 / span 2; /* Span across both columns */
+            grid-row: 2; grid-column: 1 / span 2;
             background: linear-gradient(90deg, #FF0080, #7928CA, #FF0080);
             background-size: 200% 200%;
             display: flex; align-items: center;
             overflow: hidden;
             white-space: nowrap;
-            color: white; font-size: 60px; font-weight: bold; /* Increased font size for 120px height */
+            color: white; 
+            font-size: 55px; 
+            font-weight: 600;
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
             animation: gradientMove 5s ease infinite;
             z-index: 10;
@@ -73,8 +105,10 @@
             <iframe id="frame-web" src=""></iframe>
         </div>
 
-        <div id="zone-video">
-            <div id="video-placeholder" style="width:100%; height:100%;"></div>
+        <div id="right-column">
+            <div id="dept-header">Digital Signage System</div>
+            <div id="video-container">
+                </div>
         </div>
 
         <div id="zone-marquee">
@@ -86,7 +120,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // --- YOUR CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
             authDomain: "suchartwork-1487382986748.firebaseapp.com",
@@ -101,10 +134,10 @@
         const db = firebase.database();
 
         const frameWeb = document.getElementById('frame-web');
-        const divVideo = document.getElementById('zone-video');
+        const divVideo = document.getElementById('video-container');
         const marqueeText = document.getElementById('marquee-text');
+        const deptHeader = document.getElementById('dept-header');
 
-        // Variables to check change to avoid reloading iframe unnecessarily
         let currentWebUrl = "";
         let currentYoutubeId = "";
 
@@ -112,34 +145,36 @@
             const data = snapshot.val();
             if(!data) return;
 
-            // 1. Update Marquee Text
-            if (marqueeText.innerText !== data.text) {
+            // 1. Update Dept Name
+            if(data.deptName) deptHeader.innerText = data.deptName;
+
+            // 2. Update Marquee Text & Speed
+            if (marqueeText.innerText !== data.text || marqueeText.dataset.speed != data.speed) {
                 marqueeText.innerText = data.text || "";
+                marqueeText.dataset.speed = data.speed; // store speed to check change
+                
                 marqueeText.style.animation = 'none';
                 marqueeText.offsetHeight; 
-                marqueeText.style.animation = `scroll-left ${data.speed || 20}s linear infinite`;
+                // Default fallback speed if missing
+                const speed = data.speed || 30;
+                marqueeText.style.animation = `scroll-left ${speed}s linear infinite`;
             }
 
-            // 2. Update Web URL (Left Zone)
+            // 3. Update Web
             if (data.webUrl && data.webUrl !== currentWebUrl) {
                 currentWebUrl = data.webUrl;
                 frameWeb.src = currentWebUrl;
             }
 
-            // 3. Update YouTube (Right Zone) - Supports Video ID or Playlist ID
+            // 4. Update YouTube
             if (data.youtubeId && data.youtubeId !== currentYoutubeId) {
                 currentYoutubeId = data.youtubeId;
                 let embedUrl = "";
-
-                // Check if it starts with 'PL' (Playlist ID) or standard Video ID
                 if (currentYoutubeId.startsWith("PL")) {
-                    // Embed Playlist Loop
                     embedUrl = `https://www.youtube.com/embed?listType=playlist&list=${currentYoutubeId}&autoplay=1&mute=1&loop=1&controls=0`;
                 } else {
-                    // Embed Single Video Loop
                     embedUrl = `https://www.youtube.com/embed/${currentYoutubeId}?playlist=${currentYoutubeId}&autoplay=1&mute=1&loop=1&controls=0`;
                 }
-                
                 divVideo.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media"></iframe>`;
             }
         });
