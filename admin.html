@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signage Control (3-Layout)</title>
+    <title>Signage Admin (Chakra Petch)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f6f9; padding: 20px; }
-        .card { border-radius: 12px; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .header-section { background: #7928CA; color: white; padding: 15px; border-radius: 12px 12px 0 0; }
+        body { background-color: #f0f2f5; padding: 20px; font-family: 'Chakra Petch', sans-serif; }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .header-section { color: white; padding: 15px; border-radius: 12px 12px 0 0; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -16,50 +17,55 @@
         <h2 class="mb-4 text-center fw-bold">Signage Control Panel</h2>
         
         <div class="card mb-3">
-            <div class="header-section bg-primary">
-                <h5 class="m-0">Zone 1: Web (ซ้าย 640x960)</h5>
+            <div class="header-section" style="background-color: #001a4d;">
+                <h5 class="m-0">Zone ขวา (Header + YouTube)</h5>
             </div>
             <div class="card-body">
-                <label class="form-label">Web URL</label>
-                <input type="text" class="form-control" id="inputWebUrl" placeholder="https://example.com">
-                <div class="form-text">เว็บข่าว หรือ Dashboard (ต้องรองรับ iframe)</div>
-            </div>
-        </div>
-
-        <div class="card mb-3">
-            <div class="header-section bg-danger">
-                <h5 class="m-0">Zone 2: YouTube (ขวา 1280x960)</h5>
-            </div>
-            <div class="card-body">
-                <label class="form-label">Video ID หรือ Playlist ID</label>
-                <input type="text" class="form-control" id="inputYoutubeId" placeholder="เช่น dQw4w... หรือ PLx0sYb...">
-                <div class="form-text">
-                    - ถ้าเป็นคลิปเดียว ใส่ ID หลัง v=<br>
-                    - ถ้าเป็น Playlist ใส่ ID หลัง list= (มักขึ้นต้นด้วย PL)
+                <div class="mb-3">
+                    <label class="form-label fw-bold">ชื่อหน่วยงาน (หัวข้อ)</label>
+                    <input type="text" class="form-control" id="inputDeptName" placeholder="เช่น แผนกประชาสัมพันธ์">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">YouTube ID / Playlist ID</label>
+                    <input type="text" class="form-control" id="inputYoutubeId" placeholder="ID คลิป หรือ Playlist">
                 </div>
             </div>
         </div>
 
         <div class="card mb-3">
-            <div class="header-section bg-success">
-                <h5 class="m-0">Zone 3: Marquee Text (ล่าง)</h5>
+            <div class="header-section bg-primary">
+                <h5 class="m-0">Zone ซ้าย (Web Page)</h5>
             </div>
             <div class="card-body">
-                <label class="form-label">ข้อความ</label>
-                <input type="text" class="form-control mb-3" id="inputText" placeholder="ข้อความประกาศ...">
-                <label class="form-label">ความเร็ว (วินาที)</label>
-                <input type="range" class="form-range" id="inputSpeed" min="5" max="50" value="20">
+                <label class="form-label fw-bold">Web URL</label>
+                <input type="text" class="form-control" id="inputWebUrl" placeholder="https://...">
             </div>
         </div>
 
-        <button class="btn btn-dark w-100 py-3 fs-5 fw-bold" onclick="updateSignage()">อัปเดตหน้าจอทั้งหมด</button>
+        <div class="card mb-3">
+            <div class="header-section" style="background: linear-gradient(90deg, #FF0080, #7928CA);">
+                <h5 class="m-0">Zone ล่าง (ตัววิ่ง)</h5>
+            </div>
+            <div class="card-body">
+                <label class="form-label fw-bold">ข้อความ</label>
+                <textarea class="form-control mb-3" id="inputText" rows="2" placeholder="พิมพ์ข้อความยาวๆ ได้เลย..."></textarea>
+                
+                <label class="form-label fw-bold">ความเร็วการวิ่ง (ยิ่งมาก ยิ่งช้า)</label>
+                <div class="d-flex align-items-center">
+                    <input type="range" class="form-range flex-grow-1 me-3" id="inputSpeed" min="10" max="300" step="10" value="30" oninput="speedVal.innerText = this.value + ' วินาที'">
+                    <span id="speedVal" class="badge bg-secondary" style="width: 80px;">30 วินาที</span>
+                </div>
+                <div class="form-text">แนะนำ: ข้อความสั้นใช้ 20-40, ข้อความยาวมากใช้ 100+</div>
+            </div>
+        </div>
+
+        <button class="btn btn-dark w-100 py-3 fs-5 fw-bold" onclick="updateSignage()">ส่งข้อมูลขึ้นจอ</button>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // --- YOUR CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
             authDomain: "suchartwork-1487382986748.firebaseapp.com",
@@ -73,24 +79,28 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Load current data when open admin
+        // Load existing data
         db.ref('signage_data').once('value', (snapshot) => {
             const data = snapshot.val();
             if(data) {
+                document.getElementById('inputDeptName').value = data.deptName || '';
                 document.getElementById('inputWebUrl').value = data.webUrl || '';
                 document.getElementById('inputYoutubeId').value = data.youtubeId || '';
                 document.getElementById('inputText').value = data.text || '';
-                document.getElementById('inputSpeed').value = data.speed || 20;
+                document.getElementById('inputSpeed').value = data.speed || 30;
+                document.getElementById('speedVal').innerText = (data.speed || 30) + ' วินาที';
             }
         });
 
         function updateSignage() {
+            const deptName = document.getElementById('inputDeptName').value;
             const webUrl = document.getElementById('inputWebUrl').value;
             const youtubeId = document.getElementById('inputYoutubeId').value;
             const text = document.getElementById('inputText').value;
             const speed = document.getElementById('inputSpeed').value;
 
             db.ref('signage_data').set({
+                deptName: deptName,
                 webUrl: webUrl,
                 youtubeId: youtubeId,
                 text: text,
