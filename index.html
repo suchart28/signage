@@ -3,33 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Signage Display</title>
+    <title>Digital Signage Display (3-Zone)</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, sans-serif; }
         
-        /* Layout Container 1920x1080 Ratio Idea */
-        #display-container {
-            width: 100vw; height: 100vh;
-            display: flex; flex-direction: column;
+        /* Main Grid Container 1920x1080 */
+        #grid-container {
+            display: grid;
+            width: 1920px;
+            height: 1080px;
+            /* Grid Template: 
+               Row 1: 960px
+               Row 2: 120px 
+               Col 1: 640px, Col 2: 1280px */
+            grid-template-rows: 960px 120px;
+            grid-template-columns: 640px 1280px;
         }
 
-        /* Main Content Area (Video/Web) */
-        #main-content {
-            flex-grow: 1; position: relative; background: #1a1a1a;
+        /* Zone 1: Web (Top Left) */
+        #zone-web {
+            grid-row: 1; grid-column: 1;
+            background: #fff;
+            border-right: 2px solid #333; /* Optional border */
         }
-        iframe { width: 100%; height: 100%; border: none; }
 
-        /* Marquee Section (Minimal & Colorful) */
-        #marquee-bar {
-            height: 80px;
-            background: linear-gradient(90deg, #FF0080, #7928CA, #FF0080); /* Colorful Gradient */
+        /* Zone 2: YouTube (Top Right) */
+        #zone-video {
+            grid-row: 1; grid-column: 2;
+            background: #000;
+        }
+
+        /* Zone 3: Marquee (Bottom Full Width) */
+        #zone-marquee {
+            grid-row: 2; grid-column: 1 / span 2; /* Span across both columns */
+            background: linear-gradient(90deg, #FF0080, #7928CA, #FF0080);
             background-size: 200% 200%;
             display: flex; align-items: center;
-            color: white; font-size: 40px; font-weight: bold;
-            white-space: nowrap; overflow: hidden;
+            overflow: hidden;
+            white-space: nowrap;
+            color: white; font-size: 60px; font-weight: bold; /* Increased font size for 120px height */
             box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
             animation: gradientMove 5s ease infinite;
+            z-index: 10;
         }
+
+        iframe { width: 100%; height: 100%; border: none; }
 
         @keyframes gradientMove { 
             0% {background-position: 0% 50%} 
@@ -40,7 +58,6 @@
         .scrolling-text {
             display: inline-block;
             padding-left: 100%;
-            animation: scroll-left 20s linear infinite;
         }
 
         @keyframes scroll-left {
@@ -51,11 +68,17 @@
 </head>
 <body>
 
-    <div id="display-container">
-        <div id="main-content">
-            </div>
-        <div id="marquee-bar">
-            <div class="scrolling-text" id="marquee-text">กำลังรอข้อมูล...</div>
+    <div id="grid-container">
+        <div id="zone-web">
+            <iframe id="frame-web" src=""></iframe>
+        </div>
+
+        <div id="zone-video">
+            <div id="video-placeholder" style="width:100%; height:100%;"></div>
+        </div>
+
+        <div id="zone-marquee">
+            <div class="scrolling-text" id="marquee-text">รอรับสัญญาณ...</div>
         </div>
     </div>
 
@@ -63,46 +86,61 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
     <script>
-        // --- 1. ใส่ Config จาก Firebase ตรงนี้ ---
-       const firebaseConfig = {
-  apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
-  authDomain: "suchartwork-1487382986748.firebaseapp.com",
-  databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
-  projectId: "suchartwork-1487382986748",
-  storageBucket: "suchartwork-1487382986748.firebasestorage.app",
-  messagingSenderId: "353884592527",
-  appId: "1:353884592527:web:c201a092042a005feb13fa"
+        // --- YOUR CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGYuI3yxJbUTc6T_0pm6WiEKZul11tXS0",
+            authDomain: "suchartwork-1487382986748.firebaseapp.com",
+            databaseURL: "https://suchartwork-1487382986748.firebaseio.com",
+            projectId: "suchartwork-1487382986748",
+            storageBucket: "suchartwork-1487382986748.firebasestorage.app",
+            messagingSenderId: "353884592527",
+            appId: "1:353884592527:web:c201a092042a005feb13fa"
         };
         
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // --- 2. Logic การเปลี่ยนหน้าจอ ---
-        const contentDiv = document.getElementById('main-content');
+        const frameWeb = document.getElementById('frame-web');
+        const divVideo = document.getElementById('zone-video');
         const marqueeText = document.getElementById('marquee-text');
+
+        // Variables to check change to avoid reloading iframe unnecessarily
+        let currentWebUrl = "";
+        let currentYoutubeId = "";
 
         db.ref('signage_data').on('value', (snapshot) => {
             const data = snapshot.val();
             if(!data) return;
 
-            // Update Text
-            marqueeText.innerText = data.text || "";
-            // Reset Animation to make sure new text flows correctly
-            const el = marqueeText;
-            el.style.animation = 'none';
-            el.offsetHeight; /* trigger reflow */
-            el.style.animation = `scroll-left ${data.speed || 20}s linear infinite`;
+            // 1. Update Marquee Text
+            if (marqueeText.innerText !== data.text) {
+                marqueeText.innerText = data.text || "";
+                marqueeText.style.animation = 'none';
+                marqueeText.offsetHeight; 
+                marqueeText.style.animation = `scroll-left ${data.speed || 20}s linear infinite`;
+            }
 
-            // Update Content based on Type
-            contentDiv.innerHTML = ''; // Clear old content
-            
-            if (data.type === 'youtube') {
-                // YouTube Embed (Autoplay, Mute to bypass browser policy, Loop)
-                const videoId = data.url; 
-                contentDiv.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0" allow="autoplay; encrypted-media"></iframe>`;
-            } else if (data.type === 'web') {
-                contentDiv.innerHTML = `<iframe src="${data.url}"></iframe>`;
+            // 2. Update Web URL (Left Zone)
+            if (data.webUrl && data.webUrl !== currentWebUrl) {
+                currentWebUrl = data.webUrl;
+                frameWeb.src = currentWebUrl;
+            }
+
+            // 3. Update YouTube (Right Zone) - Supports Video ID or Playlist ID
+            if (data.youtubeId && data.youtubeId !== currentYoutubeId) {
+                currentYoutubeId = data.youtubeId;
+                let embedUrl = "";
+
+                // Check if it starts with 'PL' (Playlist ID) or standard Video ID
+                if (currentYoutubeId.startsWith("PL")) {
+                    // Embed Playlist Loop
+                    embedUrl = `https://www.youtube.com/embed?listType=playlist&list=${currentYoutubeId}&autoplay=1&mute=1&loop=1&controls=0`;
+                } else {
+                    // Embed Single Video Loop
+                    embedUrl = `https://www.youtube.com/embed/${currentYoutubeId}?playlist=${currentYoutubeId}&autoplay=1&mute=1&loop=1&controls=0`;
+                }
+                
+                divVideo.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media"></iframe>`;
             }
         });
     </script>
